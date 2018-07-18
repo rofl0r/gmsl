@@ -5,30 +5,44 @@
 # A library of functions to be used with GNU Make's $(call) that
 # provides functionality not available in standard GNU Make.
 #
-# Copyright (c) 2005 John Graham-Cumming
+# Copyright (c) 2005-2006 John Graham-Cumming
 #
-#   This file is part of GMSL
+# This file is part of GMSL
 #
-#   GMSL is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation; either version 2 of the License, or
-#   (at your option) any later version.
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
 #
-#   GMSL is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
+# Redistributions of source code must retain the above copyright
+# notice, this list of conditions and the following disclaimer.
+# 
+# Redistributions in binary form must reproduce the above copyright
+# notice, this list of conditions and the following disclaimer in the
+# documentation and/or other materials provided with the distribution.
 #
-#   You should have received a copy of the GNU General Public License
-#   along with GMSL; if not, write to the Free Software
-#   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+# Neither the name of the John Graham-Cumming nor the names of its
+# contributors may be used to endorse or promote products derived from
+# this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+# LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+# LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
 #
 # ----------------------------------------------------------------------------
 
 # This is the GNU Make Standard Library version number as a list with
 # three items: major, minor, revision
 
-gmsl_version := 1 0 4
+gmsl_version := 1 0 5
 
 # Used to output warnings and error from the library, it's possible to
 # disable any warnings or errors by overriding these definitions
@@ -45,6 +59,19 @@ ifdef GMSL_NO_ERRORS
 __gmsl_error :=
 endif
 
+# If GMSL_TRACE is enabled then calls to the library functions are
+# traced to stdout using warning messages with their arguments
+
+ifdef GMSL_TRACE
+__gmsl_tr1 = $(warning $0('$1'))
+__gmsl_tr2 = $(warning $0('$1','$2'))
+__gmsl_tr3 = $(warning $0('$1','$2','$3'))
+else
+__gmsl_tr1 :=
+__gmsl_tr2 :=
+__gmsl_tr3 :=
+endif
+
 # Figure out whether we have $(eval) or not (GNU Make 3.80 and above)
 # if we do not then output a warning message, if we do then some
 # functions will be enabled.
@@ -52,9 +79,20 @@ endif
 __gmsl_have_eval := $(false)
 __gmsl_ignore := $(eval __gmsl_have_eval := $(true))
 
+# See if we have $(lastword) (GNU Make 3.81 and above)
+
+__gmsl_have_lastword := $(lastword $(false) $(true))
+
+# See if we have native or and and (GNU Make 3.81 and above)
+
+__gmsl_have_or := $(or $(true),$(false))
+__gmsl_have_and := $(and $(true),$(true))
+
 ifndef __gmsl_have_eval
 $(call __gmsl_warning,GNU Make $(MAKE_VERSION) does not support $$(eval): some functions disabled)
 endif
+
+$(warning $(__gmsl_have_or) $(__gmsl_have_and) $(__gmsl_have_lastword))
 
 # ----------------------------------------------------------------------------
 # Function:  gmsl_compatible
@@ -84,14 +122,18 @@ gmsl_compatible =                                                         \
 # Arguments: Two boolean values
 # Returns:   Returns $(true) if both of the booleans are true
 # ----------------------------------------------------------------------------
+ifndef __gmsl_have_and
 and = $(__gmsl_tr2)$(if $1,$(if $2,$(true),$(false)),$(false))
+endif
 
 # ----------------------------------------------------------------------------
 # Function:  or
 # Arguments: Two boolean values
 # Returns:   Returns $(true) if either of the booleans is true
 # ----------------------------------------------------------------------------
+ifndef __gmsl_have_or
 or = $(__gmsl_tr2)$(if $1$2,$(true),$(false))
+endif
 
 # ----------------------------------------------------------------------------
 # Function:  xor
@@ -137,7 +179,11 @@ first = $(__gmsl_tr1)$(firstword $1)
 # Arguments: 1: A list
 # Returns:   Returns the last element of a list
 # ----------------------------------------------------------------------------
+ifdef __gmsl_have_lastword
+last = $(__gmsl_tr1)$(lastword $1)
+else
 last = $(__gmsl_tr1)$(if $1,$(word $(words $1),$1))
+endif
 
 # ----------------------------------------------------------------------------
 # Function:  rest (same as LISP's cdr, or tail)
@@ -720,19 +766,6 @@ endif # __gmsl_have_eval
 #            the SHELL variable
 # ----------------------------------------------------------------------------
 gmsl-print-%: ; @echo $* = $($*)
-
-# If GMSL_TRACE is enabled then calls to the library functions are
-# traced to stdout using warning messages with their arguments
-
-ifdef GMSL_TRACE
-__gmsl_tr1 = $(warning $0('$1'))
-__gmsl_tr2 = $(warning $0('$1','$2'))
-__gmsl_tr3 = $(warning $0('$1','$2','$3'))
-else
-__gmsl_tr1 :=
-__gmsl_tr2 :=
-__gmsl_tr3 :=
-endif
 
 # ----------------------------------------------------------------------------
 # Function:  assert
